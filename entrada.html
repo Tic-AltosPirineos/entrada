@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestión Scout — Entrar</title>
+<!--
+  Página de entrada de Gestión Scout (docs/10, opción 3; montaje en docs/03).
+
+  Inicia sesión con Google, con la cuenta que se elija, y manda el justificante a
+  la aplicación, que lo comprueba con Google y abre con esa cuenta. No guarda
+  nada ni lleva secretos: el ID de cliente y la dirección de la aplicación son
+  públicos. Se publica tal cual (GitHub Pages, Firebase Hosting…), después de
+  rellenar CONFIG.
+-->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>
+:root{--bg:#f5f6f4;--surface:#fff;--text:#1d2420;--muted:#5d6862;--border:#dfe3df;--accent:#3d6b4f;--bad:#a3362e}
+@media (prefers-color-scheme:dark){:root{--bg:#141815;--surface:#1d221f;--text:#e6ebe7;--muted:#a1aca5;--border:#323a35;--accent:#7fb491;--bad:#e2847b}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;
+     background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:28px 24px}
+h1{margin:0 0 4px;font-size:1.35rem}
+.marca{color:var(--accent);font-weight:650;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase}
+p{margin:12px 0}
+.muted{color:var(--muted);font-size:.9rem}
+#boton{min-height:44px;display:flex;justify-content:center;margin:20px 0 8px}
+#estado{min-height:1.5em;font-size:.9rem;color:var(--muted)}
+#estado.mal{color:var(--bad)}
+</style>
+</head>
+<body>
+<main>
+  <div class="marca">Gestión Scout</div>
+  <h1>Entrar</h1>
+  <p class="muted">Elige la cuenta del grupo con la que vas a trabajar: la de tu sección, tu equipo o tu cargo
+    (<span id="dominio"></span>). Si tienes varias, vuelve aquí con «Cambiar de cuenta» para pasar de una a otra.</p>
+  <div id="boton"></div>
+  <p id="estado" role="status"></p>
+  <form id="formulario" method="post" target="_top"><input type="hidden" name="credential"></form>
+</main>
+<script>
+/* Rellenar antes de publicar (docs/03, «Página de entrada»). */
+var CONFIG = {
+  // ID de cliente OAuth (Google Cloud → APIs y servicios → Credenciales).
+  clientId: "PON_AQUI_EL_ID_DE_CLIENTE.apps.googleusercontent.com",
+  // URL de la aplicación web: Implementar → Gestionar implementaciones (acaba en /exec).
+  app: "https://script.google.com/macros/s/PON_AQUI_EL_ID_DE_IMPLEMENTACION/exec",
+  dominio: "altospirineos.org"
+};
+
+var estado = document.getElementById("estado");
+document.getElementById("dominio").textContent = "@" + CONFIG.dominio;
+
+function avisar(texto, mal) {
+  estado.textContent = texto;
+  estado.className = mal ? "mal" : "";
+}
+
+/** Google devuelve el justificante: se manda a la aplicación, que abre en esta misma pestaña. */
+function entrar(respuesta) {
+  if (!respuesta || !respuesta.credential) return avisar("No se ha podido iniciar sesión. Inténtalo otra vez.", true);
+  avisar("Entrando…");
+  var f = document.getElementById("formulario");
+  f.action = CONFIG.app;
+  f.credential.value = respuesta.credential;
+  f.submit();
+}
+
+function iniciar() {
+  if (/PON_AQUI/.test(CONFIG.clientId + CONFIG.app)) {
+    return avisar("Esta página está sin configurar: falta el ID de cliente o la dirección de la aplicación.", true);
+  }
+  google.accounts.id.initialize({
+    client_id: CONFIG.clientId,
+    callback: entrar,
+    // Solo es una pista para el selector: quien de verdad exige el dominio es la aplicación.
+    hd: CONFIG.dominio,
+    auto_select: false,
+    ux_mode: "popup",
+    context: "signin"
+  });
+  // Al venir de «Cambiar de cuenta», que Google no vuelva a entrar solo con la anterior.
+  if (/[?&]cambiar=1/.test(location.search)) google.accounts.id.disableAutoSelect();
+  google.accounts.id.renderButton(document.getElementById("boton"), {
+    type: "standard", theme: "outline", size: "large", text: "signin_with", shape: "rectangular",
+    locale: "es", width: 280
+  });
+}
+
+window.addEventListener("load", function () {
+  if (window.google && google.accounts && google.accounts.id) return iniciar();
+  avisar("No se ha podido cargar el inicio de sesión de Google. Comprueba la conexión y recarga la página.", true);
+});
+</script>
+</body>
+</html>
